@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/*
+ * ─────────────────────────────────────────────
+ *  GABI BIJUS — DESIGN TOKENS
+ *  Fonte única da identidade visual do site.
+ *  Para trocar cores/fontes/raios, edite AQUI.
+ * ─────────────────────────────────────────────
+ */
+@theme {
+  /* Paleta */
+  --color-bg: #f5efe4; /* creme/areia — fundo base */
+  --color-bg-light: #fbf8f1; /* branco-areia — fundo do catálogo */
+  --color-text: #2b1d14; /* marrom-café escuro — texto */
+  --color-primary: #1f5a5a; /* verde-petróleo — CTAs, links */
+  --color-primary-dark: #174545; /* petróleo escuro — footer */
+  --color-earth: #7b4b33; /* marrom quente — blocos editoriais */
+  --color-gold: #c9a24b; /* dourado — detalhes, badges, hover */
+  --color-sun: #f2c14e; /* amarelo-sol — destaques de campanha */
+  --color-sea: #2e5fa3; /* azul-portão — acento pontual */
+
+  /* Tipografia */
+  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
+  --font-sans: var(--font-archivo), "Archivo", Arial, sans-serif;
+
+  /* Raios (cards e imagens: 16–24px) */
+  --radius-card: 1rem; /* 16px */
+  --radius-card-lg: 1.5rem; /* 24px */
+
+  /* Transições */
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Seleção de texto dourada — detalhe de marca */
+::selection {
+  background-color: var(--color-gold);
+  color: var(--color-text);
+}
+
+/* Grão de papel sutil sobre o site inteiro (clima analógico/handmade) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Títulos sempre em Fraunces */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+}
+
+/* Labels uppercase com tracking levemente aumentado */
+.label-caps {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* Marquee infinito (palavras da marca) */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
+/* Rotação lenta (carimbo "feito à mão") */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 26s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow {
+    animation: none;
+  }
+}
+
+/* Rabisco dourado sob palavras-chave (traço feito à mão) */
+.squiggle {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: var(--color-gold);
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.16em;
+}
+
+/* Sublinhado animado para links editoriais */
+.link-underline {
+  position: relative;
+  text-decoration: none;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s var(--ease-editorial);
+}
+.link-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
