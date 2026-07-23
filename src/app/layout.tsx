@@ -23,11 +23,11 @@ export const metadata: Metadata = {
   },
   description:
     "Bijuterias artesanais feitas à mão no Rio de Janeiro: colares, chokers, brincos, pulseiras e body chains com alma de verão eterno.",
+  // A imagem de compartilhamento vem de app/opengraph-image.png
   openGraph: {
     siteName: "Gabi Bijus",
     locale: "pt_BR",
     type: "website",
-    images: ["/logo.png"],
   },
 };
 

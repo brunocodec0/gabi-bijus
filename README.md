@@ -103,10 +103,10 @@ Veja [.env.example](.env.example):
 Cadastro público é **desabilitado** — só entra no painel (`/admin`) quem tem
 usuário criado manualmente **e** está registrado na tabela `admin_users`.
 
-**Contas oficiais:** `EMAIL_ADMIN_1` (Gabi) e
-`EMAIL_ADMIN_2` (assistente). Depois de criá-las no dashboard,
-rode `supabase/migrations/0004_admins.sql` — ele registra as duas e remove a
-conta de teste.
+São **duas contas**: a da lojista e a da assistente. Depois de criá-las no
+dashboard, rode `supabase/migrations/0004_admins.sql` (trocando os
+placeholders pelos e-mails reais) — ele autoriza as duas e remove a conta de
+teste.
 
 ### Criar uma conta admin (teste ou real)
 
