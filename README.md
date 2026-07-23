@@ -93,12 +93,20 @@ Veja [.env.example](.env.example):
 - [x] **Etapa 5 — Segurança e qualidade** (headers de segurança + CSP, rate
   limiting no login, sitemap/robots, schema.org Product, página 404, campanha
   com landing própria, skip-link de acessibilidade)
-- [ ] **Etapa 6 — Deploy na Vercel**
+- [~] **Etapa 6 — Deploy na Vercel** — código no GitHub
+  (`brunocodec0/gabi-bijus`); import na Vercel documentado em
+  [DEPLOY.md](DEPLOY.md). Guia da lojista em
+  [GUIA-DO-PAINEL.md](GUIA-DO-PAINEL.md).
 
 ## Contas admin
 
 Cadastro público é **desabilitado** — só entra no painel (`/admin`) quem tem
 usuário criado manualmente **e** está registrado na tabela `admin_users`.
+
+**Contas oficiais:** `EMAIL_ADMIN_1` (Gabi) e
+`EMAIL_ADMIN_2` (assistente). Depois de criá-las no dashboard,
+rode `supabase/migrations/0004_admins.sql` — ele registra as duas e remove a
+conta de teste.
 
 ### Criar uma conta admin (teste ou real)
 
