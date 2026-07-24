@@ -3,31 +3,129 @@
 import { createClient } from "@/lib/supabase/client";
 
 const TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
-const TAMANHO_MAX_MB = 4;
+
+/** Guarda contra arquivo absurdo. O que a lojista envia é encolhido antes. */
+const TAMANHO_MAX_MB = 30;
+/** Maior lado da foto depois de redimensionar (cobre até o hero em tela cheia). */
+const LADO_MAX = 2400;
+/** Tamanho que tentamos alcançar depois de comprimir. */
+const ALVO_MB = 1.2;
+/** Qualidades tentadas em ordem, até o arquivo caber no alvo. */
+const QUALIDADES = [0.82, 0.7, 0.6];
+
+function mb(bytes: number) {
+  return bytes / (1024 * 1024);
+}
+
+function paraBlob(
+  canvas: HTMLCanvasElement,
+  tipo: string,
+  qualidade: number,
+): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, tipo, qualidade));
+}
+
+/**
+ * Encolhe a foto no navegador antes de subir.
+ *
+ * Foto de câmera vem com ~4000px e 5 MB, mas a loja nunca mostra mais
+ * que ~2400px — subir o arquivo cru só deixaria o site lento para as
+ * clientes e encheria o armazenamento à toa. Aqui a imagem é
+ * redimensionada e recomprimida (WebP quando o navegador topa, senão
+ * JPEG), o que costuma levar 5 MB para menos de 1 MB sem diferença
+ * visível na tela.
+ *
+ * `imageOrientation: "from-image"` respeita o EXIF — sem isso, foto
+ * tirada em pé subiria deitada.
+ *
+ * Em qualquer imprevisto devolve o arquivo original: é melhor enviar
+ * a foto grande do que travar a lojista.
+ */
+async function encolher(
+  file: File,
+): Promise<{ dados: Blob; tipo: string }> {
+  const original = { dados: file as Blob, tipo: file.type };
+  if (typeof createImageBitmap !== "function") return original;
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    return original;
+  }
+
+  const escala = Math.min(1, LADO_MAX / Math.max(bitmap.width, bitmap.height));
+  // Já é pequena e cabe na tela: não mexe (evita recomprimir à toa).
+  if (escala === 1 && mb(file.size) <= ALVO_MB) {
+    bitmap.close();
+    return original;
+  }
+
+  const largura = Math.round(bitmap.width * escala);
+  const altura = Math.round(bitmap.height * escala);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = largura;
+  canvas.height = altura;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    return original;
+  }
+  ctx.drawImage(bitmap, 0, 0, largura, altura);
+  bitmap.close();
+
+  // WebP preserva transparência e comprime melhor; se o navegador não
+  // souber gerar, o toBlob devolve outro tipo e caímos no JPEG.
+  let tipoSaida = "image/webp";
+  let saida: Blob | null = null;
+
+  for (const qualidade of QUALIDADES) {
+    saida = await paraBlob(canvas, tipoSaida, qualidade);
+    if (saida && saida.type !== tipoSaida) {
+      tipoSaida = "image/jpeg";
+      saida = await paraBlob(canvas, tipoSaida, qualidade);
+    }
+    if (saida && mb(saida.size) <= ALVO_MB) break;
+  }
+
+  // Se algo deu errado ou o "otimizado" ficou maior, fica com o original.
+  if (!saida || saida.size >= file.size) return original;
+  return { dados: saida, tipo: tipoSaida };
+}
 
 /**
  * Envia uma imagem para o bucket público `product-images`
  * (permitido só para admins pelas policies de Storage) e
- * devolve a URL pública. Aceita jpg/png/webp até 4 MB.
+ * devolve a URL pública. A foto é encolhida antes do envio.
  */
 export async function uploadImagem(
   file: File,
   pasta: "products" | "campaigns" | "content",
 ): Promise<string> {
   if (!TIPOS_ACEITOS.includes(file.type)) {
-    throw new Error("Formato não aceito — envie JPG, PNG ou WebP.");
+    throw new Error(
+      "Formato não aceito — envie JPG, PNG ou WebP. (Foto de iPhone pode " +
+        "estar em HEIC: em Ajustes → Câmera → Formatos, escolha “Mais compatível”.)",
+    );
   }
-  if (file.size > TAMANHO_MAX_MB * 1024 * 1024) {
-    throw new Error(`Imagem muito grande — o limite é ${TAMANHO_MAX_MB} MB.`);
+  if (mb(file.size) > TAMANHO_MAX_MB) {
+    throw new Error(
+      `Essa imagem tem ${mb(file.size).toFixed(1)} MB e é grande demais ` +
+        `(limite ${TAMANHO_MAX_MB} MB).`,
+    );
   }
 
+  const { dados, tipo } = await encolher(file);
+
   const supabase = createClient();
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const ext =
+    tipo === "image/png" ? "png" : tipo === "image/jpeg" ? "jpg" : "webp";
   const path = `${pasta}/${crypto.randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage
     .from("product-images")
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, dados, { contentType: tipo, upsert: false });
   if (error) throw new Error("Falha no envio da imagem. Tente de novo.");
 
   return supabase.storage.from("product-images").getPublicUrl(path).data
