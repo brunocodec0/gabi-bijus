@@ -19,6 +19,20 @@
   --color-sun: #f2c14e; /* amarelo-sol — destaques de campanha */
   --color-sea: #2e5fa3; /* azul-portão — acento pontual */
 
+  /* Escrita EM CIMA dos fundos de destaque. Não são escolhidas no
+     painel: o tema calcula sozinho (claro ou escuro) para o texto
+     continuar legível se a lojista escurecer o sol/dourado.
+     Ver cssDoTema() em src/lib/tema.ts. */
+  --color-on-sun: #2b1d14;
+  --color-on-gold: #2b1d14;
+
+  /* Barra do topo: a lojista escolhe o fundo; a escrita (--color-on-header)
+     e a cor da marca (--color-header-brand, o nome "Gabi Bijus" e o ícone
+     do carrinho) são calculadas para não sumirem num topo escuro. */
+  --color-header: #f5efe4;
+  --color-on-header: #2b1d14;
+  --color-header-brand: #1f5a5a;
+
   /* Tipografia */
   --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
   --font-sans: var(--font-archivo), "Archivo", Arial, sans-serif;

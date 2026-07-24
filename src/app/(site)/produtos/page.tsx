@@ -31,9 +31,12 @@ function sortProducts(list: Product[], ordem?: string): Product[] {
 
 // Filtros especiais controlados pelo painel: "novidades" mostra as peças
 // com badge "novo"; "descontos", as com preço promocional.
+// O ícone é um caractere tipográfico (não emoji colorido): acompanha a
+// cor do texto e combina com o resto da marca. Fica em aria-hidden para
+// o leitor de tela anunciar só a palavra.
 const filtrosEspeciais = [
-  { slug: "novidades", label: "Novidades ✨", titulo: "Novidades" },
-  { slug: "descontos", label: "Descontos 🌞", titulo: "Descontos" },
+  { slug: "novidades", icone: "✦", label: "Novidades", titulo: "Novidades" },
+  { slug: "descontos", icone: "☀", label: "Descontos", titulo: "Descontos" },
 ] as const;
 
 export default async function ProdutosPage({
@@ -106,10 +109,13 @@ export default async function ProdutosPage({
               href={filterHref({ categoria, filtro: f.slug })}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 activeFiltro?.slug === f.slug
-                  ? "bg-sun text-text"
+                  ? "bg-sun text-on-sun"
                   : "border border-gold/60 text-text/70 hover:border-gold hover:bg-sun/20"
               }`}
             >
+              <span aria-hidden className="mr-1.5">
+                {f.icone}
+              </span>
               {f.label}
             </Link>
           ))}

@@ -6,7 +6,9 @@ import {
   getFreteDisponivel,
   getProducts,
   getSiteContent,
+  getTema,
 } from "@/lib/data";
+import { cssDoTema } from "@/lib/tema";
 
 /**
  * Layout das páginas públicas (vitrine).
@@ -20,10 +22,11 @@ export const revalidate = 300;
 export default async function SiteLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [products, content, freteDisponivel] = await Promise.all([
+  const [products, content, freteDisponivel, tema] = await Promise.all([
     getProducts(),
     getSiteContent(),
     getFreteDisponivel(),
+    getTema(),
   ]);
 
   return (
@@ -33,6 +36,13 @@ export default async function SiteLayout({
       orderNote={content.footerNote}
       freteDisponivel={freteDisponivel}
     >
+      {/* Cores escolhidas no painel (Configurações → Cores do site).
+          Reescreve os tokens do @theme só nas páginas públicas — o
+          /admin fica fora deste layout e mantém o visual original,
+          então uma cor ruim aqui nunca deixa o painel inutilizável.
+          Os valores são validados como #rrggbb em src/lib/tema.ts. */}
+      <style dangerouslySetInnerHTML={{ __html: cssDoTema(tema) }} />
+
       {/* Acessibilidade: pular direto pro conteúdo via teclado */}
       <a
         href="#conteudo"

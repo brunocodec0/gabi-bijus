@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/admin/auth";
+import { normalizarTema } from "@/lib/tema";
 import { FreteForm, SenhaForm, SeoForm } from "./ConfigForms";
+import { TemaForm } from "./TemaForm";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -22,7 +24,7 @@ interface FreteValue {
 export default async function AdminConfiguracoes() {
   const { supabase, adminEmail } = await requireAdmin();
 
-  const [{ data: seoRow }, { data: freteRow }, { data: admins }] =
+  const [{ data: seoRow }, { data: freteRow }, { data: temaRow }, { data: admins }] =
     await Promise.all([
       supabase.from("site_content").select("value").eq("key", "seo").maybeSingle(),
       supabase
@@ -30,10 +32,16 @@ export default async function AdminConfiguracoes() {
         .select("value")
         .eq("key", "frete")
         .maybeSingle(),
+      supabase
+        .from("site_content")
+        .select("value")
+        .eq("key", "tema")
+        .maybeSingle(),
       supabase.from("admin_users").select("email").order("created_at"),
     ]);
   const seo = (seoRow?.value ?? {}) as SeoValue;
   const frete = (freteRow?.value ?? {}) as FreteValue;
+  const tema = normalizarTema(temaRow?.value);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -51,6 +59,18 @@ export default async function AdminConfiguracoes() {
               ogImage: seo.og_image ?? "",
             }}
           />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-text/10 bg-white p-6">
+        <h2 className="font-display text-xl font-medium">Cores do site</h2>
+        <p className="mt-1 text-sm text-text/60">
+          Todo o visual da loja sai destas cores. Mexa à vontade, veja na
+          prévia e salve quando gostar — dá para voltar ao original a
+          qualquer momento.
+        </p>
+        <div className="mt-4">
+          <TemaForm inicial={tema} />
         </div>
       </section>
 

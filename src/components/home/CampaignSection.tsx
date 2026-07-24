@@ -54,7 +54,7 @@ export function CampaignSection({ campaign }: { campaign: Campaign }) {
           </p>
           <Link
             href={`/campanha/${campaign.slug}`}
-            className="mt-8 inline-block rounded-full bg-sun px-8 py-4 font-semibold text-text transition-transform duration-300 hover:scale-[1.03]"
+            className="mt-8 inline-block rounded-full bg-sun px-8 py-4 font-semibold text-on-sun transition-transform duration-300 hover:scale-[1.03]"
           >
             {campaign.ctaLabel}
           </Link>

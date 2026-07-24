@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/auth";
 import { revalidarSitePublico } from "@/lib/admin/revalidar";
 import { TRANSPORTADORAS } from "@/lib/transportadoras";
+import { CORES_DO_TEMA, HEX_RE } from "@/lib/tema";
 
 const seoSchema = z.object({
   nome: z.string().trim().min(1).max(80),
@@ -105,5 +107,45 @@ export async function trocarSenha(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password: senha.data });
   if (error) return { erro: "Não deu pra trocar a senha. Tente de novo." };
 
+  return { ok: true as const };
+}
+
+/* ── Cores do site ────────────────────────────────────────────── */
+
+// Só #rrggbb entra no banco. Além de evitar cor quebrada, isso é o
+// que garante que nada além de uma cor chegue na tag <style> do site.
+const corSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(HEX_RE, "Cor inválida");
+
+const temaSchema = z.object(
+  Object.fromEntries(CORES_DO_TEMA.map((c) => [c.id, corSchema])),
+);
+
+export async function salvarTema(formData: FormData) {
+  const { supabase } = await requireAdmin();
+
+  const parsed = temaSchema.safeParse(
+    Object.fromEntries(CORES_DO_TEMA.map((c) => [c.id, formData.get(c.id)])),
+  );
+  if (!parsed.success) {
+    const campo = parsed.error.issues[0]?.path[0];
+    const cor = CORES_DO_TEMA.find((c) => c.id === campo);
+    return {
+      erro: cor
+        ? `A cor “${cor.label}” está inválida. Use o seletor de cor.`
+        : "Confira as cores.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("site_content")
+    .upsert({ key: "tema", value: parsed.data }, { onConflict: "key" });
+  if (error) return { erro: "Não deu pra salvar as cores." };
+
+  revalidatePath("/admin/configuracoes");
+  revalidarSitePublico();
   return { ok: true as const };
 }

@@ -5,7 +5,7 @@ import { formatBRL } from "@/lib/format";
 
 const badgeStyles: Record<string, { label: string; classes: string }> = {
   novo: { label: "novo", classes: "bg-primary text-bg-light" },
-  ultimas: { label: "últimas unidades", classes: "bg-sun text-text" },
+  ultimas: { label: "últimas unidades", classes: "bg-sun text-on-sun" },
   esgotado: { label: "esgotado", classes: "bg-text/60 text-bg-light" },
 };
 

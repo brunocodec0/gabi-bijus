@@ -1,5 +1,6 @@
 import { createPublicClient } from "@/lib/supabase/public";
 import * as mock from "./mock";
+import { normalizarTema, TEMA_PADRAO, type Tema } from "./tema";
 import type { Campaign, Category, Product, SiteContent } from "./types";
 
 /**
@@ -252,5 +253,26 @@ export async function getActiveCampaign(): Promise<Campaign | null> {
   } catch (err) {
     console.error("[data] getActiveCampaign falhou, usando mock:", err);
     return mock.campaign;
+  }
+}
+
+/**
+ * Cores do site escolhidas no painel (site_content, chave "tema").
+ * Sem banco, sem registro ou com valor inválido → paleta original.
+ */
+export async function getTema(): Promise<Tema> {
+  if (!hasSupabase) return TEMA_PADRAO;
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("site_content")
+      .select("value")
+      .eq("key", "tema")
+      .maybeSingle();
+    if (error) throw error;
+    return normalizarTema(data?.value);
+  } catch (err) {
+    console.error("[data] getTema falhou, usando paleta padrão:", err);
+    return TEMA_PADRAO;
   }
 }

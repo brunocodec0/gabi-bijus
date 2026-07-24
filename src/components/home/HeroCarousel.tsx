@@ -76,7 +76,7 @@ export function HeroCarousel({ products, tagline, highlight }: HeroCarouselProps
         <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-4">
           <Link
             href="/produtos"
-            className="rounded-full bg-sun px-8 py-4 font-semibold text-text transition-transform duration-300 hover:scale-[1.03]"
+            className="rounded-full bg-sun px-8 py-4 font-semibold text-on-sun transition-transform duration-300 hover:scale-[1.03]"
           >
             Ver as peças
           </Link>
