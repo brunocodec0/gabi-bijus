@@ -34,6 +34,9 @@ export default async function NovoProduto() {
             active: true,
             stock: "",
             images: [],
+            inHero: false,
+            heroOrder: "0",
+            options: [],
           }}
           onSubmit={criarProduto}
         />

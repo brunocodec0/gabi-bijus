@@ -27,16 +27,93 @@ interface ProductRow {
   sold_out: boolean;
   stock: number | null;
   categories: { name: string } | null;
-  product_images: { url: string; alt: string; sort_order: number }[];
+  product_images: {
+    url: string;
+    alt: string;
+    sort_order: number;
+    focal_x?: number;
+    focal_y?: number;
+  }[];
+  // Só existem depois da migração 0005 — por isso opcionais.
+  in_hero?: boolean;
+  hero_order?: number;
+  product_options?: {
+    id: string;
+    name: string;
+    sort_order: number;
+    product_option_values: { id: string; label: string; sort_order: number }[];
+  }[];
 }
 
-const PRODUCT_SELECT =
-  "id,name,slug,price,promo_price,description,materials,size_info,is_new,featured,sold_out,stock,categories(name),product_images(url,alt,sort_order)";
+const CAMPOS_BASE =
+  "id,name,slug,price,promo_price,description,materials,size_info,is_new,featured,sold_out,stock,categories(name)";
+
+/** Consulta completa (exige a migração 0005). */
+const PRODUCT_SELECT = `${CAMPOS_BASE},in_hero,hero_order,product_images(url,alt,sort_order,focal_x,focal_y),product_options(id,name,sort_order,product_option_values(id,label,sort_order))`;
+
+/** Consulta sem as colunas da 0005, para o banco ainda não migrado. */
+const PRODUCT_SELECT_LEGADO = `${CAMPOS_BASE},product_images(url,alt,sort_order)`;
+
+/**
+ * A migração 0005 já rodou? `null` = ainda não sabemos.
+ * Sem isso, cada leitura tentaria a consulta nova e falharia de novo.
+ */
+let temMigracao0005: boolean | null = null;
+
+/**
+ * Executa a consulta pedindo as colunas novas e, se o banco ainda não
+ * tiver a migração 0005, repete sem elas.
+ *
+ * O ponto importante: SEM este fallback, o erro subiria para o catch
+ * de cada função e o site inteiro cairia no mock silenciosamente —
+ * exatamente o bug de cache que já aconteceu aqui antes. Melhor
+ * mostrar o catálogo real sem variações do que um catálogo falso.
+ */
+async function consultarProdutos<T>(
+  executar: (select: string) => PromiseLike<{ data: unknown; error: unknown }>,
+): Promise<T> {
+  if (temMigracao0005 !== false) {
+    const r = await executar(PRODUCT_SELECT);
+    if (!r.error) {
+      temMigracao0005 = true;
+      return r.data as T;
+    }
+    if (temMigracao0005 === true) throw r.error; // migração existe: erro real
+  }
+
+  const r = await executar(PRODUCT_SELECT_LEGADO);
+  if (r.error) throw r.error;
+  if (temMigracao0005 === null) {
+    console.warn(
+      "[data] migração 0005 ainda não rodou — catálogo sem variações e sem controle do hero.",
+    );
+  }
+  temMigracao0005 = false;
+  return r.data as T;
+}
 
 function mapProduct(row: ProductRow): Product {
   const images = [...row.product_images]
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((i) => ({ src: i.url, alt: i.alt || row.name }));
+    .map((i) => ({
+      src: i.url,
+      alt: i.alt || row.name,
+      focalX: i.focal_x ?? 50,
+      focalY: i.focal_y ?? 50,
+    }));
+
+  // Grupo sem nenhum valor cadastrado é ignorado: senão a cliente
+  // ficaria travada num seletor vazio, sem conseguir comprar.
+  const options = [...(row.product_options ?? [])]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((o) => ({
+      id: o.id,
+      name: o.name,
+      values: [...(o.product_option_values ?? [])]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((v) => ({ id: v.id, label: v.label })),
+    }))
+    .filter((o) => o.values.length > 0);
 
   return {
     id: row.id,
@@ -45,7 +122,17 @@ function mapProduct(row: ProductRow): Product {
     category: row.categories?.name ?? "",
     price: Number(row.price),
     promoPrice: row.promo_price !== null ? Number(row.promo_price) : undefined,
-    images: images.length > 0 ? images : [{ src: "/placeholders/p1.svg", alt: row.name }],
+    images:
+      images.length > 0
+        ? images
+        : [
+            {
+              src: "/placeholders/p1.svg",
+              alt: row.name,
+              focalX: 50,
+              focalY: 50,
+            },
+          ],
     badge: row.sold_out
       ? "esgotado"
       : row.stock !== null && row.stock > 0 && row.stock <= 3
@@ -54,9 +141,12 @@ function mapProduct(row: ProductRow): Product {
           ? "novo"
           : undefined,
     featured: row.featured,
+    inHero: row.in_hero ?? false,
+    heroOrder: row.hero_order ?? 0,
     description: row.description,
     materials: row.materials,
     sizeInfo: row.size_info,
+    options,
   };
 }
 
@@ -64,13 +154,14 @@ export async function getProducts(): Promise<Product[]> {
   if (!hasSupabase) return mock.products;
   try {
     const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("products")
-      .select(PRODUCT_SELECT)
-      .eq("active", true)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data as unknown as ProductRow[]).map(mapProduct);
+    const data = await consultarProdutos<ProductRow[]>((select) =>
+      supabase
+        .from("products")
+        .select(select)
+        .eq("active", true)
+        .order("created_at", { ascending: false }),
+    );
+    return (data ?? []).map(mapProduct);
   } catch (err) {
     console.error("[data] getProducts falhou, usando mock:", err);
     return mock.products;
@@ -83,14 +174,15 @@ export async function getProductBySlug(
   if (!hasSupabase) return mock.getProductBySlug(slug);
   try {
     const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("products")
-      .select(PRODUCT_SELECT)
-      .eq("active", true)
-      .eq("slug", slug)
-      .maybeSingle();
-    if (error) throw error;
-    return data ? mapProduct(data as unknown as ProductRow) : undefined;
+    const data = await consultarProdutos<ProductRow | null>((select) =>
+      supabase
+        .from("products")
+        .select(select)
+        .eq("active", true)
+        .eq("slug", slug)
+        .maybeSingle(),
+    );
+    return data ? mapProduct(data) : undefined;
   } catch (err) {
     console.error("[data] getProductBySlug falhou, usando mock:", err);
     return mock.getProductBySlug(slug);
@@ -183,20 +275,26 @@ export async function getCampaignBySlug(
   }
   try {
     const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("campaigns")
-      .select(
-        `title,slug,image_url,body,cta_label,campaign_products(products(${PRODUCT_SELECT}))`,
-      )
-      .eq("active", true)
-      .eq("slug", slug)
-      .maybeSingle();
-    if (error) throw error;
+    const data = await consultarProdutos<{
+      title: string;
+      slug: string;
+      image_url: string | null;
+      body: string;
+      cta_label: string;
+      campaign_products: { products: ProductRow | null }[];
+    } | null>((select) =>
+      supabase
+        .from("campaigns")
+        .select(
+          `title,slug,image_url,body,cta_label,campaign_products(products(${select}))`,
+        )
+        .eq("active", true)
+        .eq("slug", slug)
+        .maybeSingle(),
+    );
     if (!data) return null;
 
-    const rows = (
-      data.campaign_products as unknown as { products: ProductRow | null }[]
-    )
+    const rows = data.campaign_products
       .map((cp) => cp.products)
       .filter((p): p is ProductRow => p !== null);
 

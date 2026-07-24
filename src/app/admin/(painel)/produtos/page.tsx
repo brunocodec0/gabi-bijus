@@ -23,10 +23,15 @@ interface Row {
 export default async function AdminProdutos({
   searchParams,
 }: {
-  searchParams: Promise<{ busca?: string; salvo?: string; excluido?: string }>;
+  searchParams: Promise<{
+    busca?: string;
+    salvo?: string;
+    excluido?: string;
+    migracao?: string;
+  }>;
 }) {
   const { supabase } = await requireAdmin();
-  const { busca, salvo, excluido } = await searchParams;
+  const { busca, salvo, excluido, migracao } = await searchParams;
 
   let query = supabase
     .from("products")
@@ -59,6 +64,13 @@ export default async function AdminProdutos({
       {excluido && (
         <p className="mt-4 rounded-2xl bg-sun/30 px-4 py-3 text-sm">
           Peça excluída.
+        </p>
+      )}
+      {migracao === "pendente" && (
+        <p className="mt-4 rounded-2xl bg-sun/30 px-4 py-3 text-sm">
+          <strong>As variações não foram salvas.</strong> O banco ainda precisa
+          receber a atualização que criou esse recurso — o resto da peça foi
+          salvo normalmente. Avise quem cuida do site.
         </p>
       )}
 

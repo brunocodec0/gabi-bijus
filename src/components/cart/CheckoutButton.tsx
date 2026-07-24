@@ -1,7 +1,7 @@
 "use client";
 
 import { useCart } from "./CartContext";
-import { effectivePrice } from "@/lib/types";
+import { describeSelection, effectivePrice } from "@/lib/types";
 import { orderMessage, waLink } from "@/lib/whatsapp";
 
 /**
@@ -18,7 +18,11 @@ export function CheckoutButton({ className = "" }: { className?: string }) {
     const origin = window.location.origin;
     const message = orderMessage(
       available.map((i) => ({
-        name: i.product.name,
+        // A escolha entra no nome da peça: sem isso a Gabi receberia
+        // o pedido sem saber qual cor a cliente quis.
+        name: describeSelection(i.selection)
+          ? `${i.product.name} (${describeSelection(i.selection)})`
+          : i.product.name,
         qty: i.qty,
         unitPrice: effectivePrice(i.product),
         url: `${origin}/produtos/${i.product.slug}`,

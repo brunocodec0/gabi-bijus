@@ -3,12 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCart, type CartItem } from "./CartContext";
-import { effectivePrice } from "@/lib/types";
+import { describeSelection, effectivePrice } from "@/lib/types";
 import { formatBRL } from "@/lib/format";
 
 export function CartItemRow({ item }: { item: CartItem }) {
   const { setQty, removeItem } = useCart();
-  const { product, qty, available } = item;
+  // `id` (slug + escolhas), nunca o slug: a mesma peça em duas cores
+  // são duas linhas, e mexer numa não pode mexer na outra.
+  const { id, product, qty, available, selection } = item;
+  const escolhas = describeSelection(selection);
 
   return (
     <div
@@ -35,11 +38,16 @@ export function CartItemRow({ item }: { item: CartItem }) {
             className="font-display leading-snug hover:text-primary"
           >
             {product.name}
+            {escolhas && (
+              <span className="mt-0.5 block text-xs font-sans not-italic text-text/60">
+                {escolhas}
+              </span>
+            )}
           </Link>
           <button
             type="button"
-            onClick={() => removeItem(product.slug)}
-            aria-label={`Remover ${product.name} do carrinho`}
+            onClick={() => removeItem(id)}
+            aria-label={`Remover ${product.name}${escolhas ? ` (${escolhas})` : ""} do carrinho`}
             className="rounded-full p-1 text-text/40 transition-colors hover:bg-text/5 hover:text-text"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
@@ -58,7 +66,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
             <div className="flex items-center rounded-full border border-text/15">
               <button
                 type="button"
-                onClick={() => setQty(product.slug, qty - 1)}
+                onClick={() => setQty(id, qty - 1)}
                 aria-label="Diminuir quantidade"
                 className="px-3 py-1.5 text-text/60 transition-colors hover:text-text"
               >
@@ -69,7 +77,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
               </span>
               <button
                 type="button"
-                onClick={() => setQty(product.slug, qty + 1)}
+                onClick={() => setQty(id, qty + 1)}
                 aria-label="Aumentar quantidade"
                 className="px-3 py-1.5 text-text/60 transition-colors hover:text-text"
               >

@@ -7,12 +7,24 @@ interface HeroBentoProps {
 }
 
 export function HeroBento({ products, content }: HeroBentoProps) {
-  // Vitrine em tela cheia: destaques primeiro, depois o resto do
-  // catálogo ativo (esgotados ficam de fora). Até 10 fotos.
-  const showcase = [
-    ...products.filter((p) => p.featured && p.badge !== "esgotado"),
-    ...products.filter((p) => !p.featured && p.badge !== "esgotado"),
-  ].slice(0, 10);
+  const disponiveis = products.filter((p) => p.badge !== "esgotado");
+
+  // A lojista escolhe as peças da tela principal no painel
+  // (Produtos → "Aparece na tela principal"), na ordem que definir.
+  const escolhidas = disponiveis
+    .filter((p) => p.inHero)
+    .sort((a, b) => a.heroOrder - b.heroOrder);
+
+  // Enquanto ela não escolher nenhuma, mantém o comportamento antigo
+  // (destaques primeiro) — assim a home nunca fica sem hero.
+  const showcase = (
+    escolhidas.length > 0
+      ? escolhidas
+      : [
+          ...disponiveis.filter((p) => p.featured),
+          ...disponiveis.filter((p) => !p.featured),
+        ]
+  ).slice(0, 10);
 
   return (
     <HeroCarousel

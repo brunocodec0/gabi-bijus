@@ -39,7 +39,7 @@ export function CartPageContent() {
           <>
             <div className="mt-8 divide-y divide-text/8 rounded-3xl bg-bg px-5 py-2 md:px-7">
               {items.map((item) => (
-                <CartItemRow key={item.product.slug} item={item} />
+                <CartItemRow key={item.id} item={item} />
               ))}
             </div>
 

@@ -10,7 +10,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { effectivePrice, type Product } from "@/lib/types";
+import {
+  cartLineId,
+  effectivePrice,
+  type OptionSelection,
+  type Product,
+} from "@/lib/types";
 import { calcularDesconto, type CupomValido } from "@/lib/cupom";
 import type { FreteEscolhido } from "@/lib/whatsapp";
 
@@ -23,25 +28,37 @@ import type { FreteEscolhido } from "@/lib/whatsapp";
  * vira a fonte dos itens do pedido sem mudança de interface.
  */
 
-const STORAGE_KEY = "gabi-bijus-carrinho-v1";
+// v2: cada linha carrega as escolhas da cliente (material, cor da
+// cordinha…). A mesma peça em duas cores são duas linhas.
+const STORAGE_KEY = "gabi-bijus-carrinho-v2";
+const STORAGE_KEY_V1 = "gabi-bijus-carrinho-v1";
 
 interface StoredItem {
   slug: string;
   qty: number;
+  selection?: OptionSelection;
 }
 
 export interface CartItem {
+  /** identidade da linha: slug + escolhas */
+  id: string;
   product: Product;
   qty: number;
+  selection: OptionSelection;
   /** false quando o produto foi esgotado/desativado após entrar no carrinho */
   available: boolean;
 }
 
+/** Identidade da linha guardada — é por ela que somamos e removemos. */
+function idDe(i: StoredItem): string {
+  return cartLineId(i.slug, i.selection ?? {});
+}
+
 type Action =
   | { type: "hydrate"; items: StoredItem[] }
-  | { type: "add"; slug: string; qty: number }
-  | { type: "setQty"; slug: string; qty: number }
-  | { type: "remove"; slug: string }
+  | { type: "add"; slug: string; qty: number; selection: OptionSelection }
+  | { type: "setQty"; id: string; qty: number }
+  | { type: "remove"; id: string }
   | { type: "clear" };
 
 function reducer(state: StoredItem[], action: Action): StoredItem[] {
@@ -49,21 +66,28 @@ function reducer(state: StoredItem[], action: Action): StoredItem[] {
     case "hydrate":
       return action.items;
     case "add": {
-      const existing = state.find((i) => i.slug === action.slug);
-      if (existing) {
+      const id = cartLineId(action.slug, action.selection);
+      if (state.some((i) => idDe(i) === id)) {
         return state.map((i) =>
-          i.slug === action.slug ? { ...i, qty: Math.min(i.qty + action.qty, 99) } : i,
+          idDe(i) === id ? { ...i, qty: Math.min(i.qty + action.qty, 99) } : i,
         );
       }
-      return [...state, { slug: action.slug, qty: Math.min(action.qty, 99) }];
+      return [
+        ...state,
+        {
+          slug: action.slug,
+          qty: Math.min(action.qty, 99),
+          selection: action.selection,
+        },
+      ];
     }
     case "setQty":
-      if (action.qty <= 0) return state.filter((i) => i.slug !== action.slug);
+      if (action.qty <= 0) return state.filter((i) => idDe(i) !== action.id);
       return state.map((i) =>
-        i.slug === action.slug ? { ...i, qty: Math.min(action.qty, 99) } : i,
+        idDe(i) === action.id ? { ...i, qty: Math.min(action.qty, 99) } : i,
       );
     case "remove":
-      return state.filter((i) => i.slug !== action.slug);
+      return state.filter((i) => idDe(i) !== action.id);
     case "clear":
       return [];
   }
@@ -78,9 +102,13 @@ interface CartContextValue {
   desconto: number;
   /** subtotal − desconto + frete */
   total: number;
-  addItem: (slug: string, qty?: number) => void;
-  setQty: (slug: string, qty: number) => void;
-  removeItem: (slug: string) => void;
+  addItem: (
+    slug: string,
+    qty?: number,
+    selection?: OptionSelection,
+  ) => void;
+  setQty: (id: string, qty: number) => void;
+  removeItem: (id: string) => void;
   clear: () => void;
   isOpen: boolean;
   openDrawer: () => void;
@@ -125,21 +153,39 @@ export function CartProvider({
 
   // Carrega do localStorage após montar (evita mismatch de hidratação)
   useEffect(() => {
+    const lerChave = (chave: string): StoredItem[] => {
+      const raw = window.localStorage.getItem(chave);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(
+          (i): i is StoredItem =>
+            typeof i === "object" &&
+            i !== null &&
+            typeof (i as StoredItem).slug === "string" &&
+            typeof (i as StoredItem).qty === "number",
+        )
+        .map((i) => ({
+          slug: i.slug,
+          qty: i.qty,
+          // Aceita só escolhas em formato texto→texto.
+          selection:
+            i.selection && typeof i.selection === "object"
+              ? Object.fromEntries(
+                  Object.entries(i.selection).filter(
+                    ([, valor]) => typeof valor === "string",
+                  ),
+                )
+              : {},
+        }));
+    };
+
     let items: StoredItem[] = [];
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          items = parsed.filter(
-            (i): i is StoredItem =>
-              typeof i === "object" &&
-              i !== null &&
-              typeof (i as StoredItem).slug === "string" &&
-              typeof (i as StoredItem).qty === "number",
-          );
-        }
-      }
+      items = lerChave(STORAGE_KEY);
+      // Carrinho montado antes das variações: aproveita em vez de perder.
+      if (items.length === 0) items = lerChave(STORAGE_KEY_V1);
     } catch {
       // localStorage indisponível/corrompido — segue com carrinho vazio
     }
@@ -164,7 +210,16 @@ export function CartProvider({
       stored.flatMap((i) => {
         const product = products.find((p) => p.slug === i.slug);
         if (!product) return []; // produto removido/desativado — descarta
-        return [{ product, qty: i.qty, available: product.badge !== "esgotado" }];
+        const selection = i.selection ?? {};
+        return [
+          {
+            id: cartLineId(i.slug, selection),
+            product,
+            qty: i.qty,
+            selection,
+            available: product.badge !== "esgotado",
+          },
+        ];
       }),
     [stored, products],
   );
@@ -187,16 +242,19 @@ export function CartProvider({
     [subtotal, desconto, frete],
   );
 
-  const addItem = useCallback((slug: string, qty = 1) => {
-    dispatch({ type: "add", slug, qty });
-    setIsOpen(true);
-  }, []);
+  const addItem = useCallback(
+    (slug: string, qty = 1, selection: OptionSelection = {}) => {
+      dispatch({ type: "add", slug, qty, selection });
+      setIsOpen(true);
+    },
+    [],
+  );
   const setQty = useCallback(
-    (slug: string, qty: number) => dispatch({ type: "setQty", slug, qty }),
+    (id: string, qty: number) => dispatch({ type: "setQty", id, qty }),
     [],
   );
   const removeItem = useCallback(
-    (slug: string) => dispatch({ type: "remove", slug }),
+    (id: string) => dispatch({ type: "remove", id }),
     [],
   );
   const clear = useCallback(() => {

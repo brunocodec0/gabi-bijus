@@ -55,7 +55,19 @@ export const campaign: Campaign = {
 const care =
   "Banho dourado artesanal. Evite contato com água do mar, perfume e cremes.";
 
-export const products: Product[] = [
+/**
+ * Entrada do mock: dispensa os campos que o `products` abaixo
+ * preenche sozinho (ponto focal das fotos, hero e variações), para
+ * não repetir o mesmo padrão em 8 produtos e 23 imagens.
+ */
+type ProdutoMock = Omit<Product, "images" | "inHero" | "heroOrder" | "options"> & {
+  images: { src: string; alt: string; focalX?: number; focalY?: number }[];
+  inHero?: boolean;
+  heroOrder?: number;
+  options?: Product["options"];
+};
+
+const produtosBase: ProdutoMock[] = [
   {
     id: "1",
     name: "Colar Sol de Ipanema",
@@ -73,6 +85,27 @@ export const products: Product[] = [
       "Um pingente orgânico dourado que parece ter sido moldado pelo próprio sol. Feito à mão, cada peça sai levemente diferente — como as ondas.",
     materials: `Latão com banho dourado, corrente inoxidável. ${care}`,
     sizeInfo: "Corrente de 45 cm com extensor de 5 cm. Pingente de ~2,5 cm.",
+    // Exemplo de peça com escolha (o caso do pingente prata com
+    // cordinha marrom): serve de banco de testes sem precisar do banco.
+    options: [
+      {
+        id: "op-material",
+        name: "Material",
+        values: [
+          { id: "v-dourado", label: "Dourado" },
+          { id: "v-prata", label: "Prata" },
+        ],
+      },
+      {
+        id: "op-cordinha",
+        name: "Cor da cordinha",
+        values: [
+          { id: "v-marrom", label: "Marrom" },
+          { id: "v-preta", label: "Preta" },
+          { id: "v-areia", label: "Areia" },
+        ],
+      },
+    ],
   },
   {
     id: "2",
@@ -192,6 +225,23 @@ export const products: Product[] = [
     sizeInfo: "18 cm com extensor de 3 cm.",
   },
 ];
+
+/**
+ * Completa os campos que a 0005 trouxe. Sem banco, o hero mostra os
+ * destaques (mesmo comportamento de antes) e as fotos ficam
+ * centralizadas — 50/50 é exatamente o `object-position` padrão.
+ */
+export const products: Product[] = produtosBase.map((p, i) => ({
+  ...p,
+  images: p.images.map((img) => ({
+    ...img,
+    focalX: img.focalX ?? 50,
+    focalY: img.focalY ?? 50,
+  })),
+  inHero: p.inHero ?? p.featured,
+  heroOrder: p.heroOrder ?? i,
+  options: p.options ?? [],
+}));
 
 export function getProductBySlug(slug: string): Product | undefined {
   return products.find((p) => p.slug === slug);

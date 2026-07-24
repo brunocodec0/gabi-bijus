@@ -48,6 +48,10 @@ export function HeroCarousel({ products, tagline, highlight }: HeroCarouselProps
           sizes="100vw"
           style={{
             transition: `opacity 0.9s ease, scale ${INTERVAL_MS + 2000}ms linear`,
+            // Enquadramento escolhido no painel. Sem isso o corte é
+            // sempre no centro e, em foto vertical de modelo, a peça
+            // (que fica no colo/pescoço) sai do quadro.
+            objectPosition: `${p.images[0].focalX}% ${p.images[0].focalY}%`,
           }}
           className={`object-cover ${
             i === active ? "scale-[1.08] opacity-100" : "scale-100 opacity-0"

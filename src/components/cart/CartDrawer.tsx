@@ -89,7 +89,7 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-5">
               <div className="divide-y divide-text/8">
                 {items.map((item) => (
-                  <CartItemRow key={item.product.slug} item={item} />
+                  <CartItemRow key={item.id} item={item} />
                 ))}
               </div>
 
