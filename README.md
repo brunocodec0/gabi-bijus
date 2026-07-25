@@ -3,6 +3,28 @@
 Site da **Gabi Bijus** — bijuterias artesanais feitas à mão no Rio de Janeiro.
 Vitrine pública + painel admin, com carrinho e finalização de pedido via WhatsApp (`wa.me`).
 
+E-commerce completo de verdade, em produção, com custo mensal zero (free tier
+de ponta a ponta).
+
+## Destaques técnicos
+
+- **Segurança em camadas** — Row Level Security no Postgres em todas as tabelas
+  (leitura pública só do que é público, escrita só de admin), painel protegido
+  no servidor (`proxy.ts`), validação de toda entrada com zod, rate limiting no
+  login, CSP e headers de segurança.
+- **Dois clientes Supabase** — site público lê **sem cookies** (páginas
+  cacheadas via ISR, revalidadas na hora quando o admin salva); painel usa
+  sessão. Detalhe que faz a diferença entre um site rápido e um lento.
+- **Painel administrativo completo** em português, pensado para quem não é
+  técnica: produtos com upload e reordenação de fotos, categorias, campanhas,
+  cupons, e todo o conteúdo do site editável sem tocar em código.
+- **Carrinho → WhatsApp** com cupons (validados no servidor sem expor a lista),
+  cálculo de frete real via API do Melhor Envio e persistência em `localStorage`.
+- **SEO e performance** — sitemap e robots dinâmicos, Open Graph, schema.org
+  `Product`, imagens otimizadas via `next/image`.
+- **Identidade visual autoral** — sem template: onda do calçadão, carimbo
+  giratório, tipografia editorial, tokens de design centralizados.
+
 ## Stack
 
 - **Next.js (App Router) + TypeScript + Tailwind CSS v4**
