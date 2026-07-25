@@ -59,6 +59,8 @@ export function ProdutoForm({
   const [slugEditado, setSlugEditado] = useState(!!inicial.slug);
   const [erro, setErro] = useState<string | null>(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
+  // Índice da foto que está sendo enquadrada (null = nenhuma).
+  const [enquadrando, setEnquadrando] = useState<number | null>(null);
   const [salvando, startSalvar] = useTransition();
 
   const set = <K extends keyof ProdutoFormValues>(
@@ -277,12 +279,20 @@ export function ProdutoForm({
                 key={img.url}
                 className="w-28 overflow-hidden rounded-2xl border border-text/10 bg-white"
               >
-                <div className="relative aspect-[4/5]">
+                <button
+                  type="button"
+                  onClick={() => setEnquadrando(i)}
+                  className="group relative block aspect-[4/5] w-full cursor-pointer"
+                  aria-label={`Enquadrar foto ${i + 1}`}
+                >
                   <Image
                     src={img.url}
                     alt={img.alt || `Foto ${i + 1}`}
                     fill
                     sizes="112px"
+                    style={{
+                      objectPosition: `${img.focalX}% ${img.focalY}%`,
+                    }}
                     className="object-cover"
                   />
                   {i === 0 && (
@@ -290,7 +300,15 @@ export function ProdutoForm({
                       capa
                     </span>
                   )}
-                </div>
+                  {(img.focalX !== 50 || img.focalY !== 50) && (
+                    <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-bg-light">
+                      ✓ enq.
+                    </span>
+                  )}
+                  <span className="absolute inset-x-0 bottom-0 bg-text/60 py-0.5 text-center text-[10px] font-semibold text-bg-light opacity-0 transition-opacity group-hover:opacity-100">
+                    Enquadrar
+                  </span>
+                </button>
                 <div className="flex items-center justify-between px-1.5 py-1">
                   <button
                     type="button"
@@ -342,22 +360,27 @@ export function ProdutoForm({
           </div>
           <p className="mt-2 text-xs text-text/50">
             JPG, PNG ou WebP — pode mandar a foto direto da câmera, ela é
-            reduzida sozinha no envio. Use as setas para mudar a ordem.
+            reduzida sozinha no envio. Use as setas para mudar a ordem e
+            clique numa foto para enquadrar.
           </p>
         </div>
 
-        {/* Enquadramento da capa na tela principal */}
-        {v.inHero && v.images.length > 0 && (
-          <EnquadramentoHero
-            imagem={v.images[0]}
+        {/* Enquadramento da foto escolhida (vale para catálogo, página e
+            tela principal). */}
+        {enquadrando !== null && v.images[enquadrando] && (
+          <EnquadrarFoto
+            imagem={v.images[enquadrando]}
+            indice={enquadrando}
+            capa={enquadrando === 0}
             onChange={(focalX, focalY) =>
               setV((prev) => ({
                 ...prev,
                 images: prev.images.map((img, i) =>
-                  i === 0 ? { ...img, focalX, focalY } : img,
+                  i === enquadrando ? { ...img, focalX, focalY } : img,
                 ),
               }))
             }
+            onFechar={() => setEnquadrando(null)}
           />
         )}
 
@@ -447,20 +470,26 @@ export function ProdutoForm({
 }
 
 /**
- * Escolha do enquadramento da capa na tela principal.
+ * Enquadramento de UMA foto: a lojista clica no ponto que precisa
+ * aparecer e o mesmo ponto vale onde a foto é cortada — no catálogo,
+ * na página da peça e, sendo a capa, na tela principal.
  *
- * O hero é um quadro alto de tela cheia e a foto é cortada para
- * preencher. Cortando sempre pelo centro, foto vertical de modelo
- * perde a bijuteria (que fica no colo) e sobra o meio do corpo.
- * Aqui a lojista clica no ponto que precisa aparecer e vê, ao lado,
- * exatamente como vai ficar.
+ * Cortar sempre pelo centro (o padrão) faz foto vertical de modelo
+ * perder a bijuteria, que fica no colo. As prévias mostram o corte
+ * real de cada lugar em tempo real.
  */
-function EnquadramentoHero({
+function EnquadrarFoto({
   imagem,
+  indice,
+  capa,
   onChange,
+  onFechar,
 }: {
   imagem: ImagemForm;
+  indice: number;
+  capa: boolean;
   onChange: (focalX: number, focalY: number) => void;
+  onFechar: () => void;
 }) {
   const marcar = (e: React.MouseEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -471,12 +500,44 @@ function EnquadramentoHero({
     );
   };
 
+  const posicao = `${imagem.focalX}% ${imagem.focalY}%`;
+
+  // Função que devolve JSX (não é componente): evita remontar e resetar
+  // estado a cada render, e é o bastante para as duas prévias.
+  const previa = (titulo: string, className: string) => (
+    <div>
+      <p className="mb-1.5 text-xs font-semibold text-text/60">{titulo}</p>
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-text/15 bg-earth ${className}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imagem.url}
+          alt={`Prévia — ${titulo}`}
+          className="h-full w-full object-cover"
+          style={{ objectPosition: posicao }}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="rounded-3xl bg-bg px-5 py-4">
-      <p className="label-caps text-earth">Enquadramento na tela principal</p>
+      <div className="flex items-center justify-between">
+        <p className="label-caps text-earth">
+          Enquadrar a foto {indice + 1}
+        </p>
+        <button
+          type="button"
+          onClick={onFechar}
+          className="rounded-full px-3 py-1 text-sm font-semibold text-text/60 hover:text-text"
+        >
+          Fechar
+        </button>
+      </div>
       <p className="mt-1 text-xs text-text/60">
-        Clique no ponto da foto que precisa aparecer — normalmente a peça, não
-        o rosto. A prévia ao lado mostra como vai ficar na home.
+        Clique no ponto que precisa aparecer — normalmente a peça, não o
+        rosto. As prévias mostram o corte real.
       </p>
 
       <div className="mt-3 flex flex-wrap items-start gap-4">
@@ -490,46 +551,35 @@ function EnquadramentoHero({
             correta. Com next/image e proporção fixa sobraria borda e o
             ponto sairia deslocado. É tela de admin, sem ganho em otimizar.
           */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imagem.url}
-            alt="Escolha o ponto que deve aparecer"
-            onClick={marcar}
-            className="block max-h-64 w-auto max-w-70 cursor-crosshair rounded-2xl border border-text/15"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none relative"
-            style={{ height: 0 }}
-          />
-          <p className="mt-1.5 text-xs text-text/50">
-            Ponto: {imagem.focalX}% / {imagem.focalY}%
-          </p>
-        </div>
-
-        <div>
-          <p className="mb-1.5 text-xs font-semibold text-text/60">
-            Como vai ficar
-          </p>
-          <div className="relative h-64 w-40 overflow-hidden rounded-2xl border border-text/15 bg-earth">
+          <div className="relative inline-block">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imagem.url}
-              alt="Prévia do enquadramento na tela principal"
-              className="h-full w-full object-cover"
-              style={{
-                objectPosition: `${imagem.focalX}% ${imagem.focalY}%`,
-              }}
+              alt="Escolha o ponto que deve aparecer"
+              onClick={marcar}
+              className="block max-h-64 w-auto max-w-70 cursor-crosshair rounded-2xl border border-text/15"
+            />
+            {/* Marcador do ponto escolhido */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary/80 shadow"
+              style={{ left: `${imagem.focalX}%`, top: `${imagem.focalY}%` }}
             />
           </div>
+          <p className="mt-1.5 text-xs text-text/50">
+            Ponto: {imagem.focalX}% / {imagem.focalY}%
+          </p>
           <button
             type="button"
             onClick={() => onChange(50, 50)}
-            className="mt-2 text-xs font-semibold text-primary underline underline-offset-2"
+            className="mt-1 text-xs font-semibold text-primary underline underline-offset-2"
           >
             Centralizar de novo
           </button>
         </div>
+
+        {previa("No catálogo", "h-64 w-52")}
+        {capa && previa("Na tela principal", "h-40 w-64")}
       </div>
     </div>
   );

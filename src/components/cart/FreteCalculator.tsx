@@ -12,6 +12,11 @@ interface Opcao {
   prazoDias: number | null;
 }
 
+interface Expressa {
+  label: string;
+  valor: number | null;
+}
+
 /**
  * Calculadora de frete (Melhor Envio) — usada no drawer e na página.
  * A opção escolhida vive no CartContext e entra no pedido do WhatsApp.
@@ -20,6 +25,7 @@ export function FreteCalculator({ compacto = false }: { compacto?: boolean }) {
   const { frete, setFrete } = useCart();
   const [cep, setCep] = useState("");
   const [opcoes, setOpcoes] = useState<Opcao[]>([]);
+  const [expressa, setExpressa] = useState<Expressa | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -31,6 +37,7 @@ export function FreteCalculator({ compacto = false }: { compacto?: boolean }) {
   const calcular = async () => {
     setErro(null);
     setOpcoes([]);
+    setExpressa(null);
     setFrete(null);
     setCarregando(true);
     try {
@@ -45,7 +52,8 @@ export function FreteCalculator({ compacto = false }: { compacto?: boolean }) {
       } else if (data.erro) {
         setErro(data.erro);
       } else {
-        setOpcoes(data.opcoes);
+        setOpcoes(data.opcoes ?? []);
+        setExpressa(data.expressa ?? null);
       }
     } catch {
       setErro("Não conseguimos cotar agora. Combine pelo WhatsApp. 💛");
@@ -64,8 +72,22 @@ export function FreteCalculator({ compacto = false }: { compacto?: boolean }) {
     });
   };
 
+  const escolherExpressa = () => {
+    if (!expressa) return;
+    setFrete({
+      // Sem valor fixo, price 0 → não soma no total e a mensagem mostra
+      // "a combinar" (ver orderMessage em whatsapp.ts).
+      label: expressa.label,
+      price: expressa.valor ?? 0,
+      cep: formatCep(cep),
+    });
+  };
+
   const selecionadoId = (o: Opcao) =>
     frete?.price === o.preco && frete?.label.startsWith(o.nome);
+
+  const expressaSelecionada =
+    !!expressa && !!frete && frete.label.startsWith(expressa.label);
 
   return (
     <div className={compacto ? "" : "mt-6 rounded-3xl bg-bg px-5 py-5"}>
@@ -95,12 +117,45 @@ export function FreteCalculator({ compacto = false }: { compacto?: boolean }) {
 
       {erro && <p className="mt-2.5 text-sm text-text/70">{erro}</p>}
 
-      {opcoes.length > 0 && (
+      {(opcoes.length > 0 || expressa) && (
         <div
           className={`mt-3 space-y-2 ${compacto ? "max-h-52 overflow-y-auto pr-1" : ""}`}
           role="radiogroup"
           aria-label="Opções de frete"
         >
+          {/* Entrega expressa (Uber Flash) — destacada quando a cliente é
+              da região que a Gabi entrega por app. */}
+          {expressa && (
+            <label
+              className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 px-4 py-2.5 text-sm transition-colors ${
+                expressaSelecionada
+                  ? "border-primary bg-primary/10"
+                  : "border-primary/40 bg-primary/5 hover:border-primary"
+              }`}
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <input
+                  type="radio"
+                  name="frete"
+                  checked={expressaSelecionada}
+                  onChange={escolherExpressa}
+                  className="h-4 w-4 shrink-0 accent-primary"
+                />
+                <span className="min-w-0">
+                  <span className="block font-medium text-primary">
+                    ⚡ {expressa.label}
+                  </span>
+                  <span className="block text-xs text-text/50">
+                    Você é aqui pertinho! 💛
+                  </span>
+                </span>
+              </span>
+              <span className="shrink-0 font-display italic text-earth">
+                {expressa.valor === null ? "a combinar" : formatBRL(expressa.valor)}
+              </span>
+            </label>
+          )}
+
           {opcoes.map((o) => (
             <label
               key={o.id}
@@ -135,9 +190,11 @@ export function FreteCalculator({ compacto = false }: { compacto?: boolean }) {
               </span>
             </label>
           ))}
-          <p className="pt-1 text-xs text-text/50">
-            Valores estimados via Melhor Envio — confirmados na conversa. 💛
-          </p>
+          {opcoes.length > 0 && (
+            <p className="pt-1 text-xs text-text/50">
+              Valores estimados via Melhor Envio — confirmados na conversa. 💛
+            </p>
+          )}
         </div>
       )}
     </div>

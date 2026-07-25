@@ -23,7 +23,9 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
           alt={current.alt}
           fill
           priority
+          quality={90}
           sizes="(max-width: 768px) 100vw, 50vw"
+          style={{ objectPosition: `${current.focalX}% ${current.focalY}%` }}
           className={`object-cover transition-transform duration-500 ease-out ${
             zoomed ? "scale-150 cursor-zoom-out" : ""
           }`}
@@ -53,6 +55,7 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
                 alt={img.alt}
                 fill
                 sizes="80px"
+                style={{ objectPosition: `${img.focalX}% ${img.focalY}%` }}
                 className="object-cover"
               />
             </button>

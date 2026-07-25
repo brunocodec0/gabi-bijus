@@ -64,8 +64,10 @@ export function orderMessage(
     linhas.push(`Cupom ${cupom.code}: −${formatBRL(cupom.desconto)}`);
   }
   if (frete) {
+    // price 0 = entrega a combinar (ex.: Uber Flash sem valor fixo).
+    const valorFrete = frete.price > 0 ? formatBRL(frete.price) : "a combinar";
     linhas.push(
-      `Frete estimado (${frete.label}, CEP ${frete.cep}): ${formatBRL(frete.price)}`,
+      `Frete estimado (${frete.label}, CEP ${frete.cep}): ${valorFrete}`,
     );
   }
   const total =

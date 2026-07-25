@@ -312,9 +312,13 @@ export async function getCampaignBySlug(
   }
 }
 
-/** Frete disponível quando há token do Melhor Envio + CEP de origem configurado. */
+/**
+ * A calculadora de frete aparece quando há como cotar os Correios
+ * (token do Melhor Envio + CEP de origem) OU quando a entrega expressa
+ * está ativa — assim ela funciona mesmo sem o Melhor Envio.
+ */
 export async function getFreteDisponivel(): Promise<boolean> {
-  if (!process.env.MELHOR_ENVIO_TOKEN || !hasSupabase) return false;
+  if (!hasSupabase) return false;
   try {
     const supabase = createPublicClient();
     const { data } = await supabase
@@ -322,7 +326,12 @@ export async function getFreteDisponivel(): Promise<boolean> {
       .select("value")
       .eq("key", "frete")
       .maybeSingle();
-    return !!(data?.value as { cep_origem?: string } | null)?.cep_origem;
+    const config = (data?.value ?? {}) as {
+      cep_origem?: string;
+      expressa?: { ativo?: boolean };
+    };
+    const podeCotar = !!process.env.MELHOR_ENVIO_TOKEN && !!config.cep_origem;
+    return podeCotar || config.expressa?.ativo === true;
   } catch {
     return false;
   }

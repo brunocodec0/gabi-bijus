@@ -91,6 +91,59 @@ export async function salvarFrete(formData: FormData) {
   return { ok: true as const };
 }
 
+const soDigitos = (s: string) => s.replace(/\D/g, "");
+
+const faixaCepSchema = z.object({
+  de: z.string().transform(soDigitos).pipe(z.string().length(8)),
+  ate: z.string().transform(soDigitos).pipe(z.string().length(8)),
+});
+
+const expressaSchema = z.object({
+  ativo: z.boolean(),
+  label: z.string().trim().min(1).max(80),
+  valor: z.coerce.number().min(0).max(100000).nullable(),
+  faixas: z.array(faixaCepSchema).max(30),
+});
+
+export type EntregaExpressaInput = z.input<typeof expressaSchema>;
+
+export async function salvarEntregaExpressa(input: EntregaExpressaInput) {
+  const { supabase } = await requireAdmin();
+
+  const parsed = expressaSchema.safeParse(input);
+  if (!parsed.success) {
+    return { erro: "Confira o CEP das faixas (8 dígitos cada)." };
+  }
+  const dados = parsed.data;
+  // Ativa sem nenhuma faixa nunca casaria — melhor avisar do que salvar
+  // uma opção que jamais apareceria.
+  if (dados.ativo && dados.faixas.length === 0) {
+    return { erro: "Adicione ao menos uma faixa de CEP para ativar." };
+  }
+  // de > ate inverteria a faixa e nunca casaria.
+  const invertida = dados.faixas.find((f) => Number(f.de) > Number(f.ate));
+  if (invertida) {
+    return { erro: `Na faixa ${invertida.de}, o CEP inicial é maior que o final.` };
+  }
+
+  // A entrega expressa mora dentro da chave "frete"; preserva o resto.
+  const { data: atual } = await supabase
+    .from("site_content")
+    .select("value")
+    .eq("key", "frete")
+    .maybeSingle();
+  const base = (atual?.value ?? {}) as Record<string, unknown>;
+
+  const { error } = await supabase.from("site_content").upsert(
+    { key: "frete", value: { ...base, expressa: dados } },
+    { onConflict: "key" },
+  );
+  if (error) return { erro: "Não deu pra salvar a entrega expressa." };
+
+  revalidarSitePublico();
+  return { ok: true as const };
+}
+
 const senhaSchema = z
   .string()
   .min(8, "A senha precisa de pelo menos 8 caracteres.")

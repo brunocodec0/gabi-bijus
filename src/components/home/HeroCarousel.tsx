@@ -45,6 +45,7 @@ export function HeroCarousel({ products, tagline, highlight }: HeroCarouselProps
           alt={p.images[0].alt}
           fill
           priority={i === 0}
+          quality={90}
           sizes="100vw"
           style={{
             transition: `opacity 0.9s ease, scale ${INTERVAL_MS + 2000}ms linear`,

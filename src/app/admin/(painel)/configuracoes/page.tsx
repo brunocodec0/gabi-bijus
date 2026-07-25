@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/admin/auth";
 import { normalizarTema } from "@/lib/tema";
-import { FreteForm, SenhaForm, SeoForm } from "./ConfigForms";
+import { normalizarExpressa } from "@/lib/entrega-expressa";
+import {
+  EntregaExpressaForm,
+  FreteForm,
+  SenhaForm,
+  SeoForm,
+} from "./ConfigForms";
 import { TemaForm } from "./TemaForm";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -19,6 +25,7 @@ interface FreteValue {
   largura_cm?: number;
   comprimento_cm?: number;
   empresas?: string[];
+  expressa?: unknown;
 }
 
 export default async function AdminConfiguracoes() {
@@ -93,6 +100,19 @@ export default async function AdminConfiguracoes() {
             }}
             tokenConfigurado={!!process.env.MELHOR_ENVIO_TOKEN}
           />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-text/10 bg-white p-6">
+        <h2 className="font-display text-xl font-medium">
+          Entrega expressa (Uber Flash)
+        </h2>
+        <p className="mt-1 text-sm text-text/60">
+          Para clientes perto de você. Quando o CEP cair numa das faixas, o
+          carrinho oferece a entrega por app, combinada no WhatsApp.
+        </p>
+        <div className="mt-4">
+          <EntregaExpressaForm inicial={normalizarExpressa(frete.expressa)} />
         </div>
       </section>
 

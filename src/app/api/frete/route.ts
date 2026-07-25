@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { cepNaFaixa, normalizarExpressa } from "@/lib/entrega-expressa";
 
 /**
  * Cotação de frete via Melhor Envio (API gratuita).
@@ -25,6 +26,15 @@ interface FreteConfig {
   comprimento_cm?: number;
   /** transportadoras exibidas à cliente; vazio/ausente = só Correios */
   empresas?: string[];
+  /** entrega própria (Uber Flash) por faixa de CEP */
+  expressa?: unknown;
+}
+
+/** Opção expressa quando o CEP casa e ela está ativa; senão null. */
+function expressaParaCep(config: FreteConfig, cep: string) {
+  const e = normalizarExpressa(config.expressa);
+  if (!e.ativo || !cepNaFaixa(cep, e.faixas)) return null;
+  return { label: e.label, valor: e.valor };
 }
 
 interface MelhorEnvioServico {
@@ -37,11 +47,6 @@ interface MelhorEnvioServico {
 }
 
 export async function POST(request: Request) {
-  const token = process.env.MELHOR_ENVIO_TOKEN;
-  if (!token) {
-    return NextResponse.json({ disponivel: false });
-  }
-
   let cep: string;
   try {
     cep = bodySchema.parse(await request.json()).cep;
@@ -59,8 +64,23 @@ export async function POST(request: Request) {
     .eq("key", "frete")
     .maybeSingle();
   const config = (row?.value ?? {}) as FreteConfig;
-  if (!config.cep_origem) {
+
+  // Entrega expressa é por faixa de CEP e independe do Melhor Envio:
+  // funciona mesmo sem token ou se a cotação dos Correios falhar.
+  const expressa = expressaParaCep(config, cep);
+
+  const token = process.env.MELHOR_ENVIO_TOKEN;
+  const cepOrigem = config.cep_origem?.replace(/\D/g, "");
+  const podeCotarCorreios = !!token && !!cepOrigem;
+
+  // Nada a oferecer: sem cotação e sem entrega expressa para este CEP.
+  if (!podeCotarCorreios && !expressa) {
     return NextResponse.json({ disponivel: false });
+  }
+
+  if (!podeCotarCorreios) {
+    // Só a expressa (sem token/origem para cotar os Correios).
+    return NextResponse.json({ disponivel: true, opcoes: [], expressa });
   }
 
   try {
@@ -75,7 +95,7 @@ export async function POST(request: Request) {
           "User-Agent": "GabiBijus (site)",
         },
         body: JSON.stringify({
-          from: { postal_code: config.cep_origem.replace(/\D/g, "") },
+          from: { postal_code: cepOrigem },
           to: { postal_code: cep },
           package: {
             weight: (config.peso_g ?? 300) / 1000,
@@ -112,22 +132,27 @@ export async function POST(request: Request) {
       }))
       .sort((a, b) => a.preco - b.preco);
 
-    if (opcoes.length === 0) {
+    if (opcoes.length === 0 && !expressa) {
       return NextResponse.json({
         disponivel: true,
         erro: "Nenhuma opção de entrega para esse CEP. Combine pelo WhatsApp. 💛",
       });
     }
 
-    return NextResponse.json({ disponivel: true, opcoes });
+    return NextResponse.json({ disponivel: true, opcoes, expressa });
   } catch (err) {
     console.error("[frete] cotação falhou:", err);
+    // Mesmo sem a cotação dos Correios, ainda ofereça a expressa se casar.
     return NextResponse.json(
       {
         disponivel: true,
-        erro: "Não conseguimos cotar agora — o frete pode ser combinado pelo WhatsApp. 💛",
+        opcoes: [],
+        expressa,
+        erro: expressa
+          ? undefined
+          : "Não conseguimos cotar agora — o frete pode ser combinado pelo WhatsApp. 💛",
       },
-      { status: 502 },
+      { status: expressa ? 200 : 502 },
     );
   }
 }

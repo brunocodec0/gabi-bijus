@@ -18,6 +18,12 @@ const csp = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Next 16 passou a exigir a allowlist de qualidade (o padrão virou
+    // [75], travando TODA imagem em 75% — foi o que deixou as fotos do
+    // hero/catálogo sem qualidade). 90 no hero/galeria, 85 no catálogo.
+    // Valor fora da lista é arredondado pro mais próximo, então tem que
+    // estar aqui.
+    qualities: [75, 85, 90],
     // Necessário apenas para os placeholders SVG locais da fase de mock.
     // Os SVGs são servidos com sandbox e sem scripts.
     dangerouslyAllowSVG: true,

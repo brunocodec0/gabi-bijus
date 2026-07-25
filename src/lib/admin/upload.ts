@@ -6,12 +6,16 @@ const TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
 
 /** Guarda contra arquivo absurdo. O que a lojista envia é encolhido antes. */
 const TAMANHO_MAX_MB = 30;
-/** Maior lado da foto depois de redimensionar (cobre até o hero em tela cheia). */
-const LADO_MAX = 2400;
-/** Tamanho que tentamos alcançar depois de comprimir. */
-const ALVO_MB = 1.2;
-/** Qualidades tentadas em ordem, até o arquivo caber no alvo. */
-const QUALIDADES = [0.82, 0.7, 0.6];
+/** Maior lado da foto depois de redimensionar (cobre iPad retina e o hero em tela cheia). */
+const LADO_MAX = 2560;
+/**
+ * Alvo de tamanho depois de comprimir. Folgado de propósito: é loja de
+ * bijuteria, onde brilho e detalhe fino importam, e o hero amplia tudo
+ * em tela cheia — melhor 2 MB nítido do que 300 KB borrado.
+ */
+const ALVO_MB = 2.5;
+/** Qualidades tentadas em ordem, até o arquivo caber no alvo. Começa alto. */
+const QUALIDADES = [0.92, 0.86, 0.8];
 
 function mb(bytes: number) {
   return bytes / (1024 * 1024);

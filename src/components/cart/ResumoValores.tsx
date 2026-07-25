@@ -39,7 +39,7 @@ export function ResumoValores({ grande = false }: { grande?: boolean }) {
             Frete · <span className="break-words">{frete.label}</span>
           </p>
           <p className="shrink-0 font-display text-lg italic text-earth">
-            {formatBRL(frete.price)}
+            {frete.price > 0 ? formatBRL(frete.price) : "a combinar"}
           </p>
         </div>
       )}

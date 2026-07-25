@@ -26,7 +26,11 @@ export function ProductCard({ product, index }: ProductCardProps) {
           src={product.images[0].src}
           alt={product.images[0].alt}
           fill
+          quality={85}
           sizes="(max-width: 768px) 50vw, 25vw"
+          style={{
+            objectPosition: `${product.images[0].focalX}% ${product.images[0].focalY}%`,
+          }}
           className={`object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] ${
             soldOut ? "opacity-60 saturate-50" : ""
           }`}
