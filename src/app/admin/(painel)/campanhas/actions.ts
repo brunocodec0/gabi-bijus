@@ -110,3 +110,30 @@ export async function excluirCampanha(formData: FormData) {
   revalidarSitePublico();
   redirect("/admin/campanhas?excluido=1");
 }
+
+/**
+ * Ativa a campanha e marca todos os seus produtos como "à venda no site".
+ * Permite preparar uma coleção em rascunho e lançar tudo de uma vez.
+ */
+export async function lancarColecao(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const id = z.string().uuid().parse(formData.get("id"));
+
+  const { data: cp } = await supabase
+    .from("campaign_products")
+    .select("product_id")
+    .eq("campaign_id", id);
+
+  const productIds = (cp ?? []).map((r: { product_id: string }) => r.product_id);
+
+  await Promise.all([
+    supabase.from("campaigns").update({ active: true }).eq("id", id),
+    productIds.length > 0
+      ? supabase.from("products").update({ active: true }).in("id", productIds)
+      : Promise.resolve(),
+  ]);
+
+  revalidatePath("/admin/campanhas");
+  revalidarSitePublico();
+  redirect(`/admin/campanhas/${id}?lancada=1`);
+}

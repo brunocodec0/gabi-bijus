@@ -23,7 +23,9 @@ interface CampanhaFormProps {
   inicial: CampanhaFormValues;
   onSubmit: (input: CampanhaInput) => Promise<{ erro: string } | void>;
   onDelete?: (formData: FormData) => Promise<void>;
+  onLancar?: (formData: FormData) => Promise<void>;
   deleteId?: string;
+  lancada?: boolean;
 }
 
 export function CampanhaForm({
@@ -31,7 +33,9 @@ export function CampanhaForm({
   inicial,
   onSubmit,
   onDelete,
+  onLancar,
   deleteId,
+  lancada,
 }: CampanhaFormProps) {
   const [v, setV] = useState(inicial);
   const [slugEditado, setSlugEditado] = useState(!!inicial.slug);
@@ -247,6 +251,12 @@ export function CampanhaForm({
         </label>
       </div>
 
+      {lancada && (
+        <p className="mt-6 rounded-2xl bg-green-100 px-4 py-3 text-sm text-green-800">
+          Coleção lançada! Todos os produtos estão à venda no site.
+        </p>
+      )}
+
       <div className="mt-8 flex flex-wrap items-center gap-4">
         <button
           type="button"
@@ -256,6 +266,28 @@ export function CampanhaForm({
         >
           {salvando ? "Salvando…" : "Salvar campanha"}
         </button>
+
+        {onLancar && deleteId && !v.active && (
+          <form
+            action={onLancar}
+            onSubmit={(e) => {
+              if (
+                !confirm(
+                  "Lançar coleção agora? A campanha vai ficar ativa e todos os produtos vinculados vão aparecer no site.",
+                )
+              )
+                e.preventDefault();
+            }}
+          >
+            <input type="hidden" name="id" value={deleteId} />
+            <button
+              type="submit"
+              className="rounded-full border-2 border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-bg-light"
+            >
+              Lançar coleção ✦
+            </button>
+          </form>
+        )}
 
         {onDelete && deleteId && (
           <form

@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/auth";
 import { CampanhaForm } from "../CampanhaForm";
-import { atualizarCampanha, excluirCampanha } from "../actions";
+import { atualizarCampanha, excluirCampanha, lancarColecao } from "../actions";
 
 export const metadata: Metadata = { title: "Editar campanha" };
 
 export default async function EditarCampanha({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ lancada?: string }>;
 }) {
   const { supabase } = await requireAdmin();
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
 
   const [{ data: campanha }, { data: produtos }] = await Promise.all([
     supabase
@@ -51,7 +53,9 @@ export default async function EditarCampanha({
           }}
           onSubmit={atualizarComId}
           onDelete={excluirCampanha}
+          onLancar={lancarColecao}
           deleteId={campanha.id}
+          lancada={sp.lancada === "1"}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/site/ProductCard";
 import { SortSelect } from "@/components/catalog/SortSelect";
-import { getCategories, getProducts } from "@/lib/data";
+import { getActiveCampaigns, getCategories, getProducts } from "@/lib/data";
 import { effectivePrice, type Product } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -46,28 +46,34 @@ export default async function ProdutosPage({
     categoria?: string;
     ordem?: string;
     filtro?: string;
+    colecao?: string;
   }>;
 }) {
-  const [{ categoria, ordem, filtro }, products, categories] =
-    await Promise.all([searchParams, getProducts(), getCategories()]);
+  const [{ categoria, ordem, filtro, colecao }, products, categories, campanhas] =
+    await Promise.all([searchParams, getProducts(), getCategories(), getActiveCampaigns()]);
 
   const activeCategory = categories.find((c) => c.slug === categoria);
   const activeFiltro = filtrosEspeciais.find((f) => f.slug === filtro);
+  const activeColecao = campanhas.find((c) => c.slug === colecao);
 
   let filtered = activeCategory
     ? products.filter((p) => p.category === activeCategory.name)
     : products;
-  if (activeFiltro?.slug === "novidades") {
+  if (activeColecao) {
+    const ids = new Set(activeColecao.productIds);
+    filtered = filtered.filter((p) => ids.has(p.id));
+  } else if (activeFiltro?.slug === "novidades") {
     filtered = filtered.filter((p) => p.badge === "novo");
   } else if (activeFiltro?.slug === "descontos") {
     filtered = filtered.filter((p) => p.promoPrice !== undefined);
   }
   const list = sortProducts(filtered, ordem);
 
-  const filterHref = (opts: { categoria?: string; filtro?: string }) => {
+  const filterHref = (opts: { categoria?: string; filtro?: string; colecao?: string }) => {
     const params = new URLSearchParams();
     if (opts.categoria) params.set("categoria", opts.categoria);
     if (opts.filtro) params.set("filtro", opts.filtro);
+    if (opts.colecao) params.set("colecao", opts.colecao);
     if (ordem) params.set("ordem", ordem);
     return `/produtos${params.size ? `?${params}` : ""}`;
   };
@@ -77,7 +83,11 @@ export default async function ProdutosPage({
       <div className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-16">
         <p className="label-caps text-earth">Catálogo</p>
         <h1 className="mt-2 text-4xl font-medium md:text-5xl">
-          {activeFiltro ? (
+          {activeColecao ? (
+            <>
+              <em className="squiggle">{activeColecao.title}</em>
+            </>
+          ) : activeFiltro ? (
             <>
               {activeFiltro.titulo === "Novidades" ? "As " : "Os "}
               <em className="squiggle">
@@ -96,7 +106,7 @@ export default async function ProdutosPage({
           <Link
             href={filterHref({ categoria })}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-              !activeFiltro
+              !activeFiltro && !activeColecao
                 ? "bg-primary text-bg-light"
                 : "border border-text/15 text-text/70 hover:border-primary hover:text-primary"
             }`}
@@ -119,6 +129,26 @@ export default async function ProdutosPage({
               {f.label}
             </Link>
           ))}
+          {campanhas.length > 0 && (
+            <>
+              <span aria-hidden className="mx-1 h-5 w-px bg-text/15" />
+              {campanhas.map((c) => (
+                <Link
+                  key={c.slug}
+                  href={filterHref({
+                    colecao: activeColecao?.slug === c.slug ? undefined : c.slug,
+                  })}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    activeColecao?.slug === c.slug
+                      ? "bg-primary text-bg-light"
+                      : "border border-text/15 text-text/70 hover:border-primary hover:text-primary"
+                  }`}
+                >
+                  {c.title}
+                </Link>
+              ))}
+            </>
+          )}
           <span aria-hidden className="mx-1 h-5 w-px bg-text/15" />
           {categories.map((c) => (
             <Link
@@ -126,6 +156,7 @@ export default async function ProdutosPage({
               href={filterHref({
                 categoria: activeCategory?.slug === c.slug ? undefined : c.slug,
                 filtro,
+                colecao,
               })}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 activeCategory?.slug === c.slug

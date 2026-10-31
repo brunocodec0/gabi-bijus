@@ -363,6 +363,36 @@ export async function getActiveCampaign(): Promise<Campaign | null> {
   }
 }
 
+export interface CampaignSummary {
+  title: string;
+  slug: string;
+  productIds: string[];
+}
+
+/** Todas as campanhas ativas com os IDs dos produtos vinculados. */
+export async function getActiveCampaigns(): Promise<CampaignSummary[]> {
+  if (!hasSupabase) return [];
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("title,slug,campaign_products(product_id)")
+      .eq("active", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((c) => ({
+      title: c.title,
+      slug: c.slug,
+      productIds: c.campaign_products.map(
+        (cp: { product_id: string }) => cp.product_id,
+      ),
+    }));
+  } catch (err) {
+    console.error("[data] getActiveCampaigns falhou:", err);
+    return [];
+  }
+}
+
 /**
  * Cores do site escolhidas no painel (site_content, chave "tema").
  * Sem banco, sem registro ou com valor inválido → paleta original.
