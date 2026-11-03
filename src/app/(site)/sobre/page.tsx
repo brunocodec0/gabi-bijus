@@ -75,38 +75,13 @@ export default async function SobrePage() {
             ))}
           </div>
 
-          {/* O processo */}
-          <div className="mx-auto mt-14 grid max-w-4xl gap-8 md:mt-20 md:grid-cols-3">
-            {[
-              {
-                n: "01",
-                titulo: "Garimpo",
-                texto:
-                  "Pedras, conchas e dourados escolhidos no olho — cada leva é diferente, como a maré.",
-              },
-              {
-                n: "02",
-                titulo: "Bancada",
-                texto:
-                  "Arame dobrado à mão, peça por peça, sem pressa e sem produção em série.",
-              },
-              {
-                n: "03",
-                titulo: "Pra você",
-                texto:
-                  "Embalada com carinho e enviada com cheiro de verão, direto do Rio.",
-              },
-            ].map((etapa) => (
-              <div key={etapa.n}>
-                <p className="label-caps text-text/40">Nº {etapa.n}</p>
-                <h2 className="mt-1 font-display text-2xl font-medium text-primary">
-                  {etapa.titulo}
-                </h2>
-                <p className="mt-2 leading-relaxed text-text/70">
-                  {etapa.texto}
-                </p>
-              </div>
-            ))}
+          {/* Frase sobre o processo */}
+          <div className="mx-auto mt-14 max-w-2xl text-center md:mt-20">
+            <p className="label-caps text-earth">Por trás de cada biju</p>
+            <p className="mt-4 font-display text-xl italic leading-relaxed text-text/70 md:text-2xl">
+              Cada peça da Gabi Bijus nasce devagar: é selecionada com cuidado,
+              moldada à mão e enviada com carinho direto do Rio de Janeiro.
+            </p>
           </div>
         </div>
       </section>
