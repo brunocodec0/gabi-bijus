@@ -109,6 +109,9 @@ export function Footer({ content }: { content: SiteContent }) {
 
       <div className="relative border-t border-bg/10 py-4 text-center text-xs opacity-60">
         © {new Date().getFullYear()} Gabi Bijus · Feito à mão no Rio de Janeiro
+        <span className="mx-2 opacity-40">·</span>
+        site por{" "}
+        <span className="opacity-80">Bruno Codeco</span>
       </div>
     </footer>
   );
