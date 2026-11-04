@@ -111,7 +111,14 @@ export function Footer({ content }: { content: SiteContent }) {
         © {new Date().getFullYear()} Gabi Bijus · Feito à mão no Rio de Janeiro
         <span className="mx-2 opacity-40">·</span>
         site por{" "}
-        <span className="opacity-80">Bruno Codeco</span>
+        <a
+          href="https://codeco-site.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-80 underline underline-offset-2 hover:opacity-100"
+        >
+          Bruno Codeco
+        </a>
       </div>
     </footer>
   );
